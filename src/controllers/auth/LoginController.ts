@@ -1,6 +1,14 @@
 import User from '../../models/User.js';
 import jsonwebtoken from 'jsonwebtoken';
 import { type Request, type Response } from 'express';
+import { z } from 'zod';
+
+const LoginSchema = z.object({
+    body: z.object({
+        email: z.string().email(),
+        password: z.string().min(1)
+    })
+});
 
 interface UserDocument {
     _id: string;
@@ -11,15 +19,15 @@ interface UserDocument {
     comparePassword(password: string): Promise<boolean>;
 }
 
-interface LoginRequest {
-    email: string;
-    password: string;
-}
-
 const LoginController = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-
     try {
+        const parsed = LoginSchema.safeParse({ body: req.body });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
+
+        const { email, password } = parsed.data.body;
+
         const user = await User.findOne({ email }) as UserDocument | null;
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });

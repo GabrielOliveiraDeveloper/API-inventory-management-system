@@ -4,16 +4,39 @@ import User from "../../models/User.js";
 import DecreasesProductInventory from "../../services/DecreasesProductInventory.js";
 import IncreaseProductInventory from "../../services/IncreaseProductInventory.js";
 import { type Request, type Response } from "express";
+import { z } from "zod";
+
+const RegisterMovementSchema = z.object({
+    params: z.object({
+        userId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid User ID format")
+    }),
+    body: z.object({
+        type: z.enum(['in', 'out']),
+        quantity: z.number().int().positive(),
+        product: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Product ID format")
+    })
+});
+
+const GetMovementsSchema = z.object({
+    query: z.object({
+        page: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
+        limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 10),
+        type: z.enum(['in', 'out']).optional(),
+        product: z.string().optional(),
+        user: z.string().optional()
+    })
+});
 
 const RegisterMovement = async (req: Request, res: Response) => {
-    const { type, quantity, product } = req.body;
-    const userId = req.params.userId;
-
-    if (!['in', 'out'].includes(type)) {
-        return res.status(400).json({ message: 'Invalid movement type' });
-    }
-
     try {
+        const parsed = RegisterMovementSchema.safeParse({ params: req.params, body: req.body });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
+
+        const { userId } = parsed.data.params;
+        const { type, quantity, product } = parsed.data.body;
+
         const userExists = await User.findById(userId);
         if (!userExists) {
             return res.status(404).json({ message: 'User not found' });
@@ -44,32 +67,24 @@ const RegisterMovement = async (req: Request, res: Response) => {
         if (error.message === 'Insufficient stock to decrease') {
             return res.status(400).json({ message: error.message });
         }
-
         return res.status(500).json({ message: 'Error registering movement', error: error.message });
     }
 }
 
 const GetMovements = async (req: Request, res: Response): Promise<void> => {
     try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
-        const type = req.query.type as string;
-        const product = req.query.product as string;
-        const user = req.query.user as string;
+        const parsed = GetMovementsSchema.safeParse({ query: req.query });
+        if (!parsed.success) {
+            res.status(400).json({ message: 'Validation error', errors: parsed.error });
+            return;
+        }
 
+        const { page, limit, type, product, user } = parsed.data.query;
         const query: any = {};
 
-        if (type) {
-            query.type = type;
-        }
-
-        if (product) {
-            query.product = product;
-        }
-
-        if (user) {
-            query.user = user;
-        }
+        if (type) query.type = type;
+        if (product) query.product = product;
+        if (user) query.user = user;
 
         const skip = (page - 1) * limit;
 
@@ -97,7 +112,6 @@ const GetMovements = async (req: Request, res: Response): Promise<void> => {
             },
             movements
         });
-
     } catch (error: any) {
         res.status(500).json({ 
             message: 'Server error', 

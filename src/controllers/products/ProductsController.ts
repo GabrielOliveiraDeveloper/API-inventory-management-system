@@ -1,24 +1,59 @@
 import Product from "../../models/Product.js";
-import {type Request, type Response} from "express";
-import mongoose from "mongoose";
+import { type Request, type Response } from "express";
+import { z } from "zod";
 
-interface ProductRequest {
-    name: string;
-    sku: string;
-    description: string;
-    category: string;
-    costPrice: number;
-    salePrice: number;
-    quantityCurrent: number;
-    quantityMin: number;
-}
+const MongoIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Mongo ID format");
+
+const CreateProductSchema = z.object({
+    body: z.object({
+        name: z.string().min(1),
+        sku: z.string().min(1),
+        description: z.string().default(""),
+        category: z.string().min(1),
+        costPrice: z.number().positive(),
+        salePrice: z.number().positive(),
+        quantityCurrent: z.number().int().nonnegative(),
+        quantityMin: z.number().int().nonnegative()
+    })
+});
+
+const GetProductsSchema = z.object({
+    query: z.object({
+        page: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
+        limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 10),
+        search: z.string().optional(),
+        category: z.string().optional()
+    })
+});
+
+const UpdateProductSchema = z.object({
+    params: z.object({ id: MongoIdSchema }),
+    body: z.object({
+        name: z.string().min(1).optional(),
+        sku: z.string().min(1).optional(),
+        description: z.string().optional(),
+        category: z.string().min(1).optional(),
+        costPrice: z.number().positive().optional(),
+        salePrice: z.number().positive().optional(),
+        quantityCurrent: z.number().int().nonnegative().optional(),
+        quantityMin: z.number().int().nonnegative().optional()
+    })
+});
+
+const DeleteProductSchema = z.object({
+    params: z.object({ id: MongoIdSchema })
+});
 
 const CreateProduct = async (req: Request, res: Response) => {
-    const { name, sku, description, category, costPrice, salePrice, quantityCurrent, quantityMin } = req.body;
-
     try {
-        const existingProduct = await Product.findOne({ sku });
+        const parsed = CreateProductSchema.safeParse({ body: req.body });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
 
+        const { name, sku, description, category, costPrice, salePrice, quantityCurrent, quantityMin } = parsed.data.body;
+
+        const existingProduct = await Product.findOne({ sku });
         if (existingProduct) {
             return res.status(400).json({ message: 'SKU already in use' });
         }
@@ -32,14 +67,15 @@ const CreateProduct = async (req: Request, res: Response) => {
     }
 }
 
-
 const GetProducts = async (req: Request, res: Response): Promise<void> => {
     try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
-        const search = req.query.search as string;
-        const category = req.query.category as string;
+        const parsed = GetProductsSchema.safeParse({ query: req.query });
+        if (!parsed.success) {
+            res.status(400).json({ message: 'Validation error', errors: parsed.error });
+            return;
+        }
 
+        const { page, limit, search, category } = parsed.data.query;
         const query: any = {};
 
         if (search) {
@@ -74,7 +110,6 @@ const GetProducts = async (req: Request, res: Response): Promise<void> => {
             },
             products
         });
-
     } catch (error: any) {
         res.status(500).json({ 
             message: 'Server error', 
@@ -84,10 +119,14 @@ const GetProducts = async (req: Request, res: Response): Promise<void> => {
 };
 
 const UpdateProduct = async (req: Request, res: Response) => {
-    const { id } = req.params; 
-    const updateData = req.body;
-
     try {
+        const parsed = UpdateProductSchema.safeParse({ params: req.params, body: req.body });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
+
+        const { id } = parsed.data.params;
+        const updateData = parsed.data.body;
 
         const productToUpdate = await Product.findById(id);
         if (!productToUpdate) {
@@ -130,7 +169,6 @@ const UpdateProduct = async (req: Request, res: Response) => {
             message: 'Product updated successfully',
             product: updatedProduct
         });
-
     } catch (error: any) {
         res.status(500).json({ 
             message: 'Server error', 
@@ -139,5 +177,24 @@ const UpdateProduct = async (req: Request, res: Response) => {
     }
 };
 
+const RemoveProduct = async (req: Request, res: Response) => {
+    try {
+        const parsed = DeleteProductSchema.safeParse({ params: req.params });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
 
-export { CreateProduct, GetProducts, UpdateProduct };
+        const { id } = parsed.data.params;
+
+        const deletedProduct = await Product.findByIdAndDelete(id);
+        if (!deletedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        res.status(200).json({ message: 'Product removed successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
+    }
+};
+
+export { CreateProduct, GetProducts, UpdateProduct, RemoveProduct };

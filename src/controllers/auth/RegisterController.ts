@@ -1,20 +1,26 @@
 import User from '../../models/User.js';
 import { type Request, type Response } from 'express';
+import { z } from 'zod';
 
-interface RegisterRequest {
-    username: string;
-    email: string;
-    password: string;
-    role?: 'admin' | 'employee';
-}
+const RegisterSchema = z.object({
+    body: z.object({
+        username: z.string().min(3).max(30),
+        email: z.string().email(),
+        password: z.string().min(6),
+        role: z.enum(['admin', 'employee']).optional()
+    })
+});
 
 const RegisterController = async (req: Request, res: Response) => {
-
-    const { username, email, password, role } = req.body;
-
     try {
-        const existingUser = await User.findOne({ email });
+        const parsed = RegisterSchema.safeParse({ body: req.body });
+        if (!parsed.success) {
+            return res.status(400).json({ message: 'Validation error', errors: parsed.error });
+        }
 
+        const { username, email, password, role } = parsed.data.body;
+
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'Email already in use' });
         }
@@ -23,11 +29,9 @@ const RegisterController = async (req: Request, res: Response) => {
         await newUser.save();
 
         res.status(201).json({ message: 'User registered successfully', user: newUser });
-    }   catch (error) {
-
+    } catch (error) {
         res.status(500).json({ message: 'Server error', error });
     }
-
 }
 
 export default RegisterController;
