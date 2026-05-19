@@ -1,10 +1,11 @@
 import * as ProductsController from "../controllers/products/ProductsController.js";
 import express from "express";
+import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 
 const productsRoutes = express.Router();
 
-productsRoutes.post("/create", ProductsController.CreateProduct);
-productsRoutes.get("/list", ProductsController.GetProducts);
-productsRoutes.put("/update/:id", ProductsController.UpdateProduct);
+productsRoutes.post("/create", AuthMiddleware, ProductsController.CreateProduct);
+productsRoutes.get("/list", AuthMiddleware, ProductsController.GetProducts);
+productsRoutes.put("/update/:id", AuthMiddleware, ProductsController.UpdateProduct);
 
 export default productsRoutes;
