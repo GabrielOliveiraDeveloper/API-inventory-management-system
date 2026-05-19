@@ -23,7 +23,23 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'employee'], 
         default: 'employee' 
     }
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    toJSON: {
+        transform: function (doc, ret) {
+            const transformedUser = ret as any;
+            delete transformedUser.password;
+            return transformedUser;
+        }
+    },
+    toObject: {
+        transform: function (doc, ret) {
+            const transformedUser = ret as any;
+            delete transformedUser.password;
+            return transformedUser;
+        }
+    }
+});
 
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) {
@@ -38,6 +54,15 @@ userSchema.pre('save', async function () {
         throw error;
     }
 });
+
+userSchema.methods.comparePassword = async function (candidatePassword: string) {
+    try {
+        return await bcrypt.compare(candidatePassword, this.password);
+    }
+    catch (error) {
+        throw error;
+    }
+};
 
 const User = mongoose.model('User', userSchema);
 
