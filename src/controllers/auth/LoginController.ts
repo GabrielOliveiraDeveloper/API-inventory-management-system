@@ -1,5 +1,6 @@
 import User from '../../models/User.js';
 import jsonwebtoken from 'jsonwebtoken';
+import { type Request, type Response } from 'express';
 
 interface UserDocument {
     _id: string;
@@ -15,7 +16,7 @@ interface LoginRequest {
     password: string;
 }
 
-const LoginController = async (req: { body: LoginRequest }, res: any) => {
+const LoginController = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     try {

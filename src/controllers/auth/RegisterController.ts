@@ -1,4 +1,5 @@
 import User from '../../models/User.js';
+import { type Request, type Response } from 'express';
 
 interface RegisterRequest {
     username: string;
@@ -7,7 +8,7 @@ interface RegisterRequest {
     role?: 'admin' | 'employee';
 }
 
-const RegisterController = async (req: { body: RegisterRequest }, res: any) => {
+const RegisterController = async (req: Request, res: Response) => {
 
     const { username, email, password, role } = req.body;
 

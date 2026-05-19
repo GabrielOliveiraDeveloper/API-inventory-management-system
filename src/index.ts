@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import connectToDB from './db/connectToDB.js';
 import authRoutes from './routes/authRoutes.js';
+import productsRoutes from './routes/ProductsRoutes.js';
+
 import cors from 'cors';
 
 const app = express();
@@ -10,6 +12,7 @@ connectToDB();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productsRoutes);
 
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
