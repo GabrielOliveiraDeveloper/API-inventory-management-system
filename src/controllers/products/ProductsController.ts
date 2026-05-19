@@ -11,7 +11,7 @@ interface ProductRequest {
     quantityMin: number;
 }
 
-const ProductsController = async (req: {body: ProductRequest }, res: any) => {
+const CreateProduct = async (req: {body: ProductRequest }, res: any) => {
     const { name, sku, description, category, costPrice, salePrice, quantityCurrent, quantityMin } = req.body;
 
     try {
@@ -32,4 +32,4 @@ const ProductsController = async (req: {body: ProductRequest }, res: any) => {
 
 
 
-export { ProductsController };
+export { CreateProduct };
