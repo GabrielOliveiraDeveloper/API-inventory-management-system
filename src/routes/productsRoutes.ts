@@ -5,5 +5,6 @@ const productsRoutes = express.Router();
 
 productsRoutes.post("/create", ProductsController.CreateProduct);
 productsRoutes.get("/list", ProductsController.GetProducts);
+productsRoutes.put("/update/:id", ProductsController.UpdateProduct);
 
 export default productsRoutes;

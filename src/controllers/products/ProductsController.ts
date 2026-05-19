@@ -1,5 +1,6 @@
 import Product from "../../models/Product.js";
 import {type Request, type Response} from "express";
+import mongoose from "mongoose";
 
 interface ProductRequest {
     name: string;
@@ -82,5 +83,61 @@ const GetProducts = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
+const UpdateProduct = async (req: Request, res: Response) => {
+    const { id } = req.params; 
+    const updateData = req.body;
 
-export { CreateProduct, GetProducts };
+    try {
+
+        const productToUpdate = await Product.findById(id);
+        if (!productToUpdate) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        const checks = [];
+
+        if (updateData.sku && updateData.sku.toUpperCase() !== productToUpdate.sku) {
+            checks.push(
+                Product.findOne({ sku: updateData.sku.trim().toUpperCase() }).then(p => {
+                    if (p) throw new Error('SKU already in use by another product');
+                })
+            );
+        }
+
+        if (updateData.name && updateData.name !== productToUpdate.name) {
+            checks.push(
+                Product.findOne({ name: updateData.name }).then(p => {
+                    if (p) throw new Error('Product name already in use');
+                })
+            );
+        }
+
+        if (checks.length > 0) {
+            try {
+                await Promise.all(checks);
+            } catch (err: any) {
+                return res.status(400).json({ message: err.message });
+            }
+        }
+
+        const updatedProduct = await Product.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({
+            message: 'Product updated successfully',
+            product: updatedProduct
+        });
+
+    } catch (error: any) {
+        res.status(500).json({ 
+            message: 'Server error', 
+            error: error.message || error 
+        });
+    }
+};
+
+
+export { CreateProduct, GetProducts, UpdateProduct };
