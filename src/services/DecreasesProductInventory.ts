@@ -17,8 +17,6 @@ const DecreasesProductInventory = async (productId: string, quantity: number) =>
             `Stock Alert: ${product.name} is below minimum threshold`,
             `The current stock of ${product.name} (SKU: ${product.sku}) is ${product.quantityCurrent - quantity}, which is below the minimum threshold of ${product.quantityMin}. Please restock soon.`
         )
-
-        throw new Error('Stock is below minimum threshold after decrease. Alert email sent to admin.');
     }
 
     product.quantityCurrent -= quantity;
