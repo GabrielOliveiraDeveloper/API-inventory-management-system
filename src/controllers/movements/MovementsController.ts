@@ -3,7 +3,8 @@ import Product from "../../models/Product.js";
 import User from "../../models/User.js";
 import DecreasesProductInventory from "../../services/DecreasesProductInventory.js";
 import IncreaseProductInventory from "../../services/IncreaseProductInventory.js";
-import { type Request, type Response } from "express";
+import { type Response } from "express";
+import { type CustomRequest } from "../../middlewares/AuthMiddleware.js";
 import { z } from "zod";
 
 const RegisterMovementSchema = z.object({
@@ -27,7 +28,7 @@ const GetMovementsSchema = z.object({
     })
 });
 
-const RegisterMovement = async (req: Request, res: Response) => {
+const RegisterMovement = async (req: CustomRequest, res: Response) => {
     try {
         const parsed = RegisterMovementSchema.safeParse({ params: req.params, body: req.body });
         if (!parsed.success) {
@@ -36,6 +37,10 @@ const RegisterMovement = async (req: Request, res: Response) => {
 
         const { userId } = parsed.data.params;
         const { type, quantity, product } = parsed.data.body;
+
+        if (type === 'in' && req.userRole !== 'admin') {
+            return res.status(403).json({ message: 'Only admins can add stock' });
+        }
 
         const userExists = await User.findById(userId);
         if (!userExists) {
@@ -51,7 +56,7 @@ const RegisterMovement = async (req: Request, res: Response) => {
             await IncreaseProductInventory(product, quantity);
         } else if (type === 'out') {
             await DecreasesProductInventory(product, quantity);
-        } 
+        }
 
         const movement = new Movement({
             type,
@@ -71,7 +76,7 @@ const RegisterMovement = async (req: Request, res: Response) => {
     }
 }
 
-const GetMovements = async (req: Request, res: Response): Promise<void> => {
+const GetMovements = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const parsed = GetMovementsSchema.safeParse({ query: req.query });
         if (!parsed.success) {
@@ -113,9 +118,9 @@ const GetMovements = async (req: Request, res: Response): Promise<void> => {
             movements
         });
     } catch (error: any) {
-        res.status(500).json({ 
-            message: 'Server error', 
-            error: error.message || error 
+        res.status(500).json({
+            message: 'Server error',
+            error: error.message || error
         });
     }
 };

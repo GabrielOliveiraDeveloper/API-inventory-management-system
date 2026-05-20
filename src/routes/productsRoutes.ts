@@ -10,4 +10,5 @@ productsRoutes.get("/list", AuthMiddleware, ProductsController.GetProducts);
 productsRoutes.put("/update/:id", AuthMiddleware, requireRole('admin'), ProductsController.UpdateProduct);
 productsRoutes.delete("/delete/:id", AuthMiddleware, requireRole('admin'), ProductsController.RemoveProduct);
 
+
 export default productsRoutes;
