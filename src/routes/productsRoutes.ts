@@ -1,7 +1,7 @@
 import * as ProductsController from "../controllers/products/ProductsController.js";
 import express from "express";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
-import requireRole from '../middlewares/Rolemiddleware.js';
+import requireRole from '../middlewares/RoleMiddleware.js';
 
 const productsRoutes = express.Router();
 
